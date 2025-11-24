@@ -4,7 +4,7 @@ import Link from "next/link"
 import { ShoppingCart, Menu, Search, Utensils } from "lucide-react"
 import { useCart } from "@/context/CartContext"
 import { useAuth } from "@/context/AuthContext"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import AuthModal from "@/components/ui/AuthModal"
 
@@ -14,8 +14,17 @@ export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [authMode, setAuthMode] = useState<"login" | "signup">("login")
+  const [isScrolled, setIsScrolled] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20)
+    }
+    window.addEventListener("scroll", handleScroll)
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
 
   if (pathname?.startsWith("/business")) {
     return null
@@ -30,26 +39,35 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="sticky top-0 z-50 w-full border-b border-gray-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          {/* Logo */}
+      <nav
+        className={`sticky top-0 z-50 w-full border-b border-gray-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 transition-all duration-300 ${
+          isScrolled ? "h-14 shadow-md" : "h-16"
+        }`}
+      >
+        <div className={`container mx-auto px-4 h-full flex items-center justify-between transition-all duration-300`}>
           <Link href="/" className="flex items-center space-x-2 group">
-            <div className="bg-red-600 text-white p-1.5 rounded-lg transition-transform group-hover:rotate-3">
-              <Utensils size={20} fill="currentColor" />
+            <div
+              className={`bg-red-600 text-white rounded-lg transition-all duration-300 ${
+                isScrolled ? "p-1" : "p-1.5"
+              } group-hover:rotate-3`}
+            >
+              <Utensils size={isScrolled ? 16 : 20} fill="currentColor" />
             </div>
-            <span className="font-bold text-xl tracking-tight text-gray-900">
+            <span
+              className={`font-bold tracking-tight text-gray-900 transition-all duration-300 ${
+                isScrolled ? "text-lg" : "text-xl"
+              }`}
+            >
               Pure<span className="text-red-600">Plate</span>
             </span>
           </Link>
 
-          {/* Desktop Nav */}
           <div className="hidden md:flex items-center space-x-8 text-sm font-medium text-gray-600">
             {user && (
               <Link href="/menu" className="hover:text-red-600 transition-colors">
                 Menu
               </Link>
             )}
-            {/* Added Why Join Us link */}
             <Link href="/why-join-us" className="hover:text-red-600 transition-colors">
               Why Join Us
             </Link>
@@ -58,7 +76,6 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Actions */}
           <div className="flex items-center space-x-4">
             {!isLandingPage && (
               <>
@@ -105,7 +122,6 @@ export default function Navbar() {
                 >
                   Sign In
                 </button>
-                {/* Join Us -> Business Owner Flow */}
                 <Link
                   href="/business/login"
                   className="px-5 py-2 text-sm font-bold bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors shadow-md shadow-red-200"
@@ -121,7 +137,6 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Mobile Menu */}
         {isMenuOpen && (
           <div className="md:hidden border-t border-gray-100 bg-white p-4 space-y-4 animate-in slide-in-from-top-2 shadow-xl">
             {user && (
@@ -134,7 +149,6 @@ export default function Navbar() {
                 </Link>
               </>
             )}
-            {/* Added Why Join Us link to mobile menu */}
             <Link href="/why-join-us" className="block p-2 hover:bg-gray-50 rounded-md font-medium text-gray-700">
               Why Join Us
             </Link>

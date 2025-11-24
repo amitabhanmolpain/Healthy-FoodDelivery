@@ -1,55 +1,184 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Clock, MapPin, Phone, Star, Navigation } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { Clock, MapPin, Phone, Star } from "lucide-react"
 import Link from "next/link"
-import { motion } from "framer-motion"
+import L from "leaflet"
+
+const OPENROUTE_API_KEY =
+  "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjYxZDBmNjM1ZTNhMzQ5ZjdhMzY0MzNkZjdiOTAxYjZlIiwiaCI6Im11cm11cjY0In0="
 
 export default function OrderTrackerPage() {
   const [status, setStatus] = useState<"preparing" | "delivering">("preparing")
-  const [timeLeft, setTimeLeft] = useState(25 * 60) // 25 minutes in seconds
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [timeLeft, setTimeLeft] = useState(25 * 60)
+  const [userLocation, setUserLocation] = useState<[number, number]>([12.9716, 77.6412]) // Default: Bangalore Indiranagar
+  const [restaurantLocation] = useState<[number, number]>([12.9352, 77.6245]) // Koramangala
+  const [driverLocation, setDriverLocation] = useState<[number, number]>(restaurantLocation)
+  const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([])
+  const [distance, setDistance] = useState<number>(0)
+  const [duration, setDuration] = useState<number>(0)
+  const mapRef = useRef<any>(null)
+  const mapInstanceRef = useRef<any>(null)
+  const driverMarkerRef = useRef<any>(null)
+  const routeProgressRef = useRef(0)
 
-  const [driverProgress, setDriverProgress] = useState(0)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const map = L.map(mapRef.current).setView([12.9539, 77.6309], 13)
 
-  // Provided API key for reference
-  const MAP_API_KEY =
-    "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjYxZDBmNjM1ZTNhMzQ5ZjdhMzY0MzNkZjdiOTAxYjZlIiwiaCI6Im11cm11cjY0In0="
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
+      }).addTo(map)
+
+      // Restaurant marker
+      const restaurantIcon = L.divIcon({
+        className: "custom-marker",
+        html: `<div class="bg-white p-2 rounded-full shadow-xl border-2 border-gray-900">
+                <div class="bg-gray-900 p-2 rounded-full text-white text-xs font-bold">REST</div>
+               </div>`,
+        iconSize: [50, 50],
+        iconAnchor: [25, 25],
+      })
+      L.marker(restaurantLocation, { icon: restaurantIcon })
+        .addTo(map)
+        .bindPopup("<b>Restaurant</b><br>Koramangala 4th Block")
+
+      // User location marker
+      const userIcon = L.divIcon({
+        className: "custom-marker",
+        html: `<div class="relative">
+                <div class="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-20 w-12 h-12"></div>
+                <div class="bg-white p-2 rounded-full shadow-xl border-2 border-blue-500 relative z-10">
+                  <div class="bg-blue-500 p-2 rounded-full text-white">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2">
+                      <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+                    </svg>
+                  </div>
+                </div>
+               </div>`,
+        iconSize: [50, 50],
+        iconAnchor: [25, 25],
+      })
+      L.marker(userLocation, { icon: userIcon }).addTo(map).bindPopup("<b>Your Location</b><br>Indiranagar")
+
+      mapInstanceRef.current = map
+    }
+  }, [])
+
+  useEffect(() => {
+    const fetchRoute = async () => {
+      try {
+        const response = await fetch(
+          `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${OPENROUTE_API_KEY}&start=${restaurantLocation[1]},${restaurantLocation[0]}&end=${userLocation[1]},${userLocation[0]}`,
+        )
+        const data = await response.json()
+
+        if (data.features && data.features[0]) {
+          const coords = data.features[0].geometry.coordinates.map(
+            (coord: number[]) => [coord[1], coord[0]] as [number, number],
+          )
+          setRouteCoordinates(coords)
+          setDistance((data.features[0].properties.segments[0].distance / 1000).toFixed(1) as any)
+          setDuration(Math.ceil(data.features[0].properties.segments[0].duration / 60))
+
+          // Draw route on map
+          if (typeof window !== "undefined" && mapInstanceRef.current) {
+            L.polyline(coords, {
+              color: "#ce1126",
+              weight: 4,
+              opacity: 0.7,
+              dashArray: "10, 10",
+            }).addTo(mapInstanceRef.current)
+
+            mapInstanceRef.current.fitBounds(L.latLngBounds(coords))
+          }
+        }
+      } catch (error) {
+        console.error("[v0] Error fetching route:", error)
+      }
+    }
+
+    fetchRoute()
+  }, [restaurantLocation, userLocation])
+
+  useEffect(() => {
+    if (status === "delivering" && routeCoordinates.length > 0) {
+      const animateDriver = setInterval(() => {
+        routeProgressRef.current += 0.3
+        if (routeProgressRef.current >= routeCoordinates.length) {
+          routeProgressRef.current = 0
+        }
+
+        const currentIndex = Math.floor(routeProgressRef.current)
+        const nextIndex = Math.min(currentIndex + 1, routeCoordinates.length - 1)
+        const fraction = routeProgressRef.current - currentIndex
+
+        const lat =
+          routeCoordinates[currentIndex][0] +
+          (routeCoordinates[nextIndex][0] - routeCoordinates[currentIndex][0]) * fraction
+        const lng =
+          routeCoordinates[currentIndex][1] +
+          (routeCoordinates[nextIndex][1] - routeCoordinates[currentIndex][1]) * fraction
+
+        setDriverLocation([lat, lng])
+
+        if (typeof window !== "undefined" && mapInstanceRef.current) {
+          if (driverMarkerRef.current) {
+            driverMarkerRef.current.setLatLng([lat, lng])
+          } else {
+            const driverIcon = L.divIcon({
+              className: "custom-marker",
+              html: `<div class="relative">
+                      <div class="bg-[#ce1126] text-white p-2 rounded-full shadow-2xl border-2 border-white transform scale-110">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="18.5" cy="17.5" r="3.5"/>
+                          <circle cx="5.5" cy="17.5" r="3.5"/>
+                          <path d="M15 6h2.5a2.5 2.5 0 1 1 0 5H7.817a2.5 2.5 0 0 1-2.317-1.745L5 8.75"/>
+                        </svg>
+                      </div>
+                      <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-gray-900 px-2 py-1 rounded text-xs font-bold shadow whitespace-nowrap">
+                        Ramesh • KA 01 EQ 2211
+                      </div>
+                     </div>`,
+              iconSize: [40, 40],
+              iconAnchor: [20, 20],
+            })
+            driverMarkerRef.current = L.marker([lat, lng], { icon: driverIcon }).addTo(mapInstanceRef.current)
+          }
+        }
+      }, 100)
+
+      return () => clearInterval(animateDriver)
+    }
+  }, [status, routeCoordinates])
 
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          })
-          console.log("[v0] User location acquired")
+          const newLocation: [number, number] = [position.coords.latitude, position.coords.longitude]
+          setUserLocation(newLocation)
+          console.log("[v0] User location acquired:", newLocation)
         },
         (error) => {
-          console.log("[v0] Could not get location, using default", error)
+          console.log("[v0] Using default Bangalore location", error)
         },
       )
     }
+  }, [])
 
-    // Timer countdown
+  useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0))
     }, 1000)
 
-    // Simulate status change
     const statusTimer = setTimeout(() => {
       setStatus("delivering")
     }, 5000)
 
-    const driverLoop = setInterval(() => {
-      setDriverProgress((prev) => (prev + 0.5) % 100)
-    }, 100)
-
     return () => {
       clearInterval(timer)
       clearTimeout(statusTimer)
-      clearInterval(driverLoop)
     }
   }, [])
 
@@ -72,114 +201,23 @@ export default function OrderTrackerPage() {
       </header>
 
       <div className="flex-1 relative flex flex-col md:flex-row">
-        {/* Map Area */}
-        <div className="flex-1 bg-gray-200 relative min-h-[500px] md:min-h-screen overflow-hidden">
-          <div className="absolute inset-0 bg-[#e5e7eb]">
-            {/* Map Tiles Simulation */}
-            <div className="w-full h-full bg-[url('/bangalore-city-map-streets.jpg')] bg-cover bg-center opacity-60 grayscale hover:grayscale-0 transition-all duration-1000"></div>
+        <div className="flex-1 bg-gray-200 relative min-h-[500px] md:min-h-screen">
+          <div ref={mapRef} className="w-full h-full z-0"></div>
 
-            {/* Grid overlay for map feel */}
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.05)_1px,transparent_1px)] bg-[size:40px_40px]"></div>
+          {/* Map Info Overlay */}
+          <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur px-3 py-2 rounded-lg shadow-lg z-10">
+            <div className="text-xs text-gray-500">Powered by OpenRouteService</div>
+          </div>
 
-            <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
-              {/* Path Line */}
-              <path
-                id="delivery-path"
-                d="M 300 300 Q 500 500 700 400"
-                fill="none"
-                stroke="#ce1126"
-                strokeWidth="6"
-                strokeDasharray="12 6"
-                className="opacity-50"
-              />
-            </svg>
-
-            {/* Restaurant Marker */}
-            <div className="absolute top-[300px] left-[300px] -translate-x-1/2 -translate-y-1/2 z-20 group">
-              <div className="bg-white p-2 rounded-full shadow-xl border-2 border-gray-900 group-hover:scale-110 transition-transform">
-                <div className="bg-gray-900 p-2 rounded-full text-white">
-                  <span className="font-bold text-xs">REST</span>
-                </div>
-              </div>
-              <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                Koramangala 4th Block
-              </div>
-            </div>
-
-            {/* User Location Marker */}
-            <div className="absolute top-[400px] left-[700px] -translate-x-1/2 -translate-y-1/2 z-20">
-              <div className="relative">
-                <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-20 w-16 h-16 -ml-3 -mt-3"></div>
-                <div className="bg-white p-2 rounded-full shadow-xl border-2 border-blue-500 z-10 relative">
-                  <div className="bg-blue-500 p-2 rounded-full text-white">
-                    <Navigation size={20} fill="currentColor" />
-                  </div>
-                </div>
-                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-white px-3 py-1 rounded shadow-md text-xs font-bold whitespace-nowrap z-50 border border-gray-200 text-gray-800">
-                  {userLocation ? "Indiranagar (Your Location)" : "Indiranagar (Delivery)"}
-                </div>
-              </div>
-            </div>
-
-            {status === "delivering" && (
-              <motion.div
-                className="absolute z-30"
-                initial={{ top: "300px", left: "300px" }}
-                animate={{
-                  top: ["300px", "450px", "400px"],
-                  left: ["300px", "500px", "700px"],
-                }}
-                transition={{
-                  duration: 20,
-                  ease: "easeInOut",
-                  repeat: Number.POSITIVE_INFINITY,
-                }}
-              >
-                <div className="relative -translate-x-1/2 -translate-y-1/2">
-                  <div className="bg-[#ce1126] text-white p-2 rounded-full shadow-2xl border-2 border-white z-20 relative transform scale-110">
-                    {/* Scooter Icon simulation */}
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <circle cx="18.5" cy="17.5" r="3.5" />
-                      <circle cx="5.5" cy="17.5" r="3.5" />
-                      <path d="M15 6h2.5a2.5 2.5 0 1 1 0 5H7.817a2.5 2.5 0 0 1-2.317-1.745L5 8.75" />
-                      <path d="M15 6h-3V4.5a2.5 2.5 0 0 0-5 0V6" />
-                      <path d="M15 6l-2.58 7.74" />
-                    </svg>
-                  </div>
-                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-white text-gray-900 px-2 py-1 rounded-lg text-[10px] font-bold shadow-lg whitespace-nowrap border border-gray-100 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                    Ramesh • KA 01 EQ 2211
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            <div className="absolute bottom-4 right-4 bg-white/80 backdrop-blur px-2 py-1 text-[10px] text-gray-500 rounded flex flex-col items-end">
-              <span>Bangalore, KA</span>
-              <span>API Key Active: ...murmur64</span>
-            </div>
-
-            <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-2 rounded-lg shadow-sm border border-gray-200">
-              <div className="text-xs font-bold text-gray-500 uppercase">Distance</div>
-              <div className="text-sm font-black text-gray-900">4.2 km</div>
-            </div>
+          <div className="absolute top-4 left-4 bg-white/95 backdrop-blur px-4 py-3 rounded-xl shadow-lg border border-gray-100 z-10">
+            <div className="text-xs font-bold text-gray-500 uppercase mb-1">Distance</div>
+            <div className="text-2xl font-black text-gray-900">{distance} km</div>
+            {duration > 0 && <div className="text-xs text-gray-500 mt-1">{duration} min away</div>}
           </div>
         </div>
 
         {/* Status Panel */}
         <div className="w-full md:w-[400px] bg-white shadow-2xl z-20 p-6 flex flex-col h-[50vh] md:h-auto overflow-y-auto border-l border-gray-200">
-          {/* ... existing status code ... */}
-          {/* Re-implementing the panel for completeness with the new colors */}
           <div className="mb-8 text-center">
             {status === "preparing" ? (
               <>
@@ -207,9 +245,7 @@ export default function OrderTrackerPage() {
           </div>
 
           <div className="space-y-6 flex-1 px-2">
-            {/* Timeline */}
             <div className="space-y-6 relative pl-4 border-l-2 border-gray-100 ml-2">
-              {/* Timeline items similar to before but updated */}
               <div className="relative pl-6">
                 <div className="absolute -left-[21px] top-1 w-4 h-4 rounded-full bg-green-500 ring-4 ring-white"></div>
                 <h4 className="font-bold text-sm">Order Confirmed</h4>
@@ -235,11 +271,10 @@ export default function OrderTrackerPage() {
               </div>
             </div>
 
-            {/* Driver Card */}
             {status === "delivering" && (
-              <div className="bg-white border border-gray-100 p-4 rounded-xl shadow-lg flex items-center gap-3 animate-in slide-in-from-bottom-5">
+              <div className="bg-white border border-gray-100 p-4 rounded-xl shadow-lg flex items-center gap-3">
                 <div className="w-10 h-10 bg-gray-100 rounded-full overflow-hidden">
-                  <img src="/placeholder.svg?height=40&width=40" className="w-full h-full object-cover" />
+                  <img src="/placeholder.svg?height=40&width=40" alt="Driver" className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1">
                   <div className="font-bold text-sm text-gray-900">Ramesh Kumar</div>

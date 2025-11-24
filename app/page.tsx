@@ -217,7 +217,11 @@ export default function LandingPage() {
           <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
           <div className="absolute inset-0 bg-gradient-to-b from-[#ce1126] to-red-700 opacity-90"></div>
           <div className="absolute inset-0 opacity-10 mix-blend-overlay">
-            <img src="/food-science-laboratory.jpg" alt="Lab testing" className="w-full h-full object-cover grayscale" />
+            <img
+              src="/food-science-laboratory.jpg"
+              alt="Lab testing"
+              className="w-full h-full object-cover grayscale"
+            />
           </div>
 
           <div className="container mx-auto px-4 relative z-10">
@@ -267,7 +271,11 @@ export default function LandingPage() {
                   <div className="h-[46px] w-[3px] bg-gray-800 absolute -left-[17px] top-[178px] rounded-l-lg"></div>
                   <div className="h-[64px] w-[3px] bg-gray-800 absolute -right-[17px] top-[142px] rounded-r-lg"></div>
                   <div className="rounded-[2rem] overflow-hidden w-full h-full bg-white relative">
-                    <img src="/food-scanner-app-interface.jpg" alt="Scanner App" className="w-full h-full object-cover" />
+                    <img
+                      src="/food-scanner-app-interface.jpg"
+                      alt="Scanner App"
+                      className="w-full h-full object-cover"
+                    />
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"></div>
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="w-56 h-56 border-2 border-[#ce1126] rounded-3xl relative animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.5)] bg-black/10 backdrop-blur-sm">

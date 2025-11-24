@@ -1,23 +1,21 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { api } from "@/services/api"
 import MealCard from "@/components/ui/MealCard"
 import { type Meal, CATEGORIES } from "@/lib/mock-data"
 import { Search, X } from "lucide-react"
-import MealDetailModal from "@/components/ui/MealDetailModal"
 
 export default function MenuPage() {
+  const router = useRouter()
   const [meals, setMeals] = useState<Meal[]>([])
   const [loading, setLoading] = useState(true)
   const [activeCategory, setActiveCategory] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
 
   const handleMealClick = (meal: Meal) => {
-    setSelectedMeal(meal)
-    setIsModalOpen(true)
+    router.push(`/menu/${meal.id}`)
   }
 
   useEffect(() => {
@@ -110,9 +108,6 @@ export default function MenuPage() {
           </div>
         )}
       </div>
-
-      {/* Modal */}
-      <MealDetailModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} meal={selectedMeal} />
     </div>
   )
 }
