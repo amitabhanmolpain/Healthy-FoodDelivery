@@ -15,6 +15,12 @@ import {
   Headphones,
   Award,
   TrendingDown,
+  Store,
+  Truck,
+  Star,
+  Gift,
+  Crown,
+  Target,
 } from "lucide-react"
 import Link from "next/link"
 import Footer from "@/components/layout/Footer"
@@ -26,6 +32,7 @@ gsap.registerPlugin(ScrollTrigger)
 export default function WhyJoinUsPage() {
   const heroRef = useRef(null)
   const benefitsRef = useRef(null)
+  const kitchenBenefitsRef = useRef(null)
   const imageRef = useRef(null)
 
   const benefits = [
@@ -91,6 +98,53 @@ export default function WhyJoinUsPage() {
     },
   ]
 
+  const kitchenBenefits = [
+    {
+      icon: Store,
+      title: "Premium Marketplace Access",
+      description: "Join an exclusive network of health-focused restaurants reaching affluent customers.",
+    },
+    {
+      icon: Target,
+      title: "Targeted Audience",
+      description: "Connect with customers who value quality ingredients and are willing to pay premium prices.",
+    },
+    {
+      icon: Crown,
+      title: "Brand Elevation",
+      description:
+        "Association with PurePlate elevates your restaurant's reputation as a trusted health food provider.",
+    },
+    {
+      icon: Truck,
+      title: "Logistics Handled",
+      description: "We manage delivery, packaging, and customer service so you can focus on the kitchen.",
+    },
+  ]
+
+  const memberBenefits = [
+    {
+      icon: Gift,
+      title: "Exclusive Perks",
+      description: "Priority listing, featured spots, and promotional campaigns to boost visibility.",
+    },
+    {
+      icon: Star,
+      title: "Quality Recognition",
+      description: "Earn PurePlate verification badges that customers trust and actively seek.",
+    },
+    {
+      icon: BarChart3,
+      title: "Growth Insights",
+      description: "Access detailed analytics on customer preferences, peak hours, and menu optimization.",
+    },
+    {
+      icon: Users,
+      title: "Community Network",
+      description: "Join a community of like-minded chefs and restaurateurs sharing best practices.",
+    },
+  ]
+
   useEffect(() => {
     // Hero animation
     if (heroRef.current) {
@@ -113,6 +167,22 @@ export default function WhyJoinUsPage() {
         ease: "power2.out",
         scrollTrigger: {
           trigger: benefitsRef.current,
+          start: "top 70%",
+        },
+      })
+    }
+
+    // Kitchen benefits animation
+    if (kitchenBenefitsRef.current) {
+      const cards = kitchenBenefitsRef.current.querySelectorAll(".kitchen-card")
+      gsap.from(cards, {
+        opacity: 0,
+        scale: 0.9,
+        stagger: 0.15,
+        duration: 0.5,
+        ease: "back.out(1.7)",
+        scrollTrigger: {
+          trigger: kitchenBenefitsRef.current,
           start: "top 70%",
         },
       })
@@ -164,13 +234,39 @@ export default function WhyJoinUsPage() {
         </div>
       </section>
 
+      <section className="py-24 bg-white" ref={kitchenBenefitsRef}>
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">Why Top Kitchens Choose Us</h2>
+            <p className="text-gray-700 text-lg max-w-2xl mx-auto leading-relaxed">
+              We provide the tools and audience you need to scale your food business sustainably.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
+            {kitchenBenefits.map((benefit, index) => (
+              <div
+                key={index}
+                className="kitchen-card bg-gradient-to-br from-white to-gray-50 p-8 rounded-3xl shadow-lg border-2 border-gray-100 hover:shadow-2xl hover:border-red-200 transition-all group"
+              >
+                <div className="w-16 h-16 bg-red-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <benefit.icon className="text-white" size={28} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">{benefit.title}</h3>
+                <p className="text-gray-600 leading-relaxed">{benefit.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Benefits Grid */}
       <section className="py-24 bg-gray-50" ref={benefitsRef}>
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">Why Top Kitchens Choose Us</h2>
-            <p className="text-gray-600 text-lg max-w-2xl mx-auto leading-relaxed">
-              We provide the tools and audience you need to scale your food business sustainably.
+            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">Complete Partnership Benefits</h2>
+            <p className="text-gray-700 text-lg max-w-2xl mx-auto leading-relaxed">
+              Everything you need to succeed on our platform - from technology to marketing support.
             </p>
           </div>
 
@@ -184,7 +280,7 @@ export default function WhyJoinUsPage() {
                   <benefit.icon className="text-red-600 group-hover:text-white transition-colors" size={24} />
                 </div>
                 <h3 className="text-lg font-bold text-gray-900 mb-2">{benefit.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{benefit.description}</p>
+                <p className="text-gray-600 text-sm leading-relaxed">{benefit.description}</p>
               </div>
             ))}
           </div>
@@ -244,17 +340,48 @@ export default function WhyJoinUsPage() {
         </div>
       </section>
 
-      {/* CTA Section (Red Background) */}
-      <section className="py-20 bg-[#ce1126] text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#ce1126] to-red-700 opacity-90"></div>
+      <section className="py-24 bg-[#ce1126] text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#ce1126] to-red-800 opacity-90"></div>
+
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-black mb-4">What You Get After Joining</h2>
+            <p className="text-red-100 text-lg max-w-2xl mx-auto leading-relaxed">
+              Unlock exclusive features and benefits designed to accelerate your restaurant's success.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
+            {memberBenefits.map((benefit, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                viewport={{ once: true }}
+                className="bg-white/10 backdrop-blur-sm p-8 rounded-3xl border border-white/20 hover:bg-white/20 transition-all group"
+              >
+                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-white/30 transition-colors">
+                  <benefit.icon className="text-white" size={28} />
+                </div>
+                <h3 className="text-xl font-bold mb-3">{benefit.title}</h3>
+                <p className="text-red-100 leading-relaxed">{benefit.description}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 bg-white relative overflow-hidden">
         <div className="container mx-auto px-4 text-center relative z-10">
-          <h2 className="text-4xl lg:text-5xl font-black mb-6">Ready to Partner?</h2>
-          <p className="text-xl text-red-100 mb-10 max-w-2xl mx-auto">
+          <h2 className="text-4xl lg:text-5xl font-black mb-6 text-gray-900">Ready to Partner?</h2>
+          <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto">
             Start growing your business with PurePlate today. No setup fees, no hidden costs.
           </p>
           <Link
             href="/business/login"
-            className="inline-flex items-center gap-2 bg-white text-red-600 px-10 py-5 rounded-2xl font-bold text-lg hover:bg-red-50 transition-all shadow-xl hover:shadow-2xl hover:scale-105"
+            className="inline-flex items-center gap-2 bg-[#ce1126] text-white px-10 py-5 rounded-2xl font-bold text-lg hover:bg-red-700 transition-all shadow-xl hover:shadow-2xl hover:scale-105"
           >
             Join Now <ArrowRight />
           </Link>

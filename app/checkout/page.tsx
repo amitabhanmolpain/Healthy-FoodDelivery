@@ -142,24 +142,32 @@ export default function CheckoutPage() {
 
               <div className="space-y-4 mb-8">
                 <div className="flex items-center gap-4 py-2">
-                  <div className="w-16 h-16 bg-gray-100 rounded-xl overflow-hidden">
-                    <img src="/placeholder.svg?height=100&width=100" className="w-full h-full object-cover" />
+                  <div className="w-20 h-20 bg-gray-100 rounded-xl overflow-hidden shrink-0">
+                    <img
+                      src="/super-green-quinoa-bowl.jpg"
+                      alt="Mediterranean Bowl"
+                      className="w-full h-full object-cover"
+                    />
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="font-bold text-gray-900">Mediterranean Bowl</div>
                     <div className="text-sm text-gray-500">Qty: 2</div>
                   </div>
-                  <div className="font-bold">₹1,198</div>
+                  <div className="font-bold shrink-0">₹1,198</div>
                 </div>
                 <div className="flex items-center gap-4 py-2">
-                  <div className="w-16 h-16 bg-gray-100 rounded-xl overflow-hidden">
-                    <img src="/placeholder.svg?height=100&width=100" className="w-full h-full object-cover" />
+                  <div className="w-20 h-20 bg-gray-100 rounded-xl overflow-hidden shrink-0">
+                    <img
+                      src="/healthy-buddha-bowl-colorful-ingredients.jpg"
+                      alt="Quinoa Power Salad"
+                      className="w-full h-full object-cover"
+                    />
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="font-bold text-gray-900">Quinoa Power Salad</div>
                     <div className="text-sm text-gray-500">Qty: 1</div>
                   </div>
-                  <div className="font-bold">₹599</div>
+                  <div className="font-bold shrink-0">₹599</div>
                 </div>
               </div>
 
