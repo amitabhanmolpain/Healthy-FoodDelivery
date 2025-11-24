@@ -6,11 +6,13 @@ import { useCart } from "@/context/CartContext"
 import { ArrowLeft, Clock, Flame, Star, ShoppingCart, Check, Info } from "lucide-react"
 import MealCard from "@/components/ui/MealCard"
 import { motion } from "framer-motion"
+import { useToast } from "@/hooks/use-toast"
 
 export default function MealDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { addItem } = useCart()
+  const { toast } = useToast()
 
   const meal = MEALS_DB.find((m) => m.id === params.id)
 
@@ -81,14 +83,18 @@ export default function MealDetailPage() {
                   <Info size={18} className="text-red-500" /> What's Inside?
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {meal.ingredients.map((ing, i) => (
-                    <span
-                      key={i}
-                      className="bg-gray-50 text-gray-600 px-2 py-1 rounded-md text-sm border border-gray-200"
-                    >
-                      {ing}
-                    </span>
-                  ))}
+                  {meal.ingredients && Array.isArray(meal.ingredients) ? (
+                    meal.ingredients.map((ing, i) => (
+                      <span
+                        key={i}
+                        className="bg-gray-50 text-gray-600 px-2 py-1 rounded-md text-sm border border-gray-200"
+                      >
+                        {typeof ing === "string" ? ing : JSON.stringify(ing)}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-400 text-sm">No ingredients listed</span>
+                  )}
                 </div>
               </div>
 
@@ -99,11 +105,11 @@ export default function MealDetailPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-500">Calories</span>
-                    <span className="font-bold">{meal.calories}</span>
+                    <span className="font-bold">{meal.calories || "N/A"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Protein</span>
-                    <span className="font-bold">{meal.protein}g</span>
+                    <span className="font-bold">{meal.protein || "N/A"}g</span>
                   </div>
                 </div>
               </div>
@@ -112,7 +118,10 @@ export default function MealDetailPage() {
             <button
               onClick={() => {
                 addItem(meal)
-                // Optional: Show toast
+                toast({
+                  title: "Added to cart!",
+                  description: `${meal.name} has been added to your order.`,
+                })
               }}
               className="w-full bg-red-600 text-white py-5 rounded-2xl font-bold text-xl hover:bg-red-700 transition-all shadow-xl shadow-red-600/20 flex items-center justify-center gap-3 active:scale-95"
             >
