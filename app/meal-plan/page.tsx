@@ -3,8 +3,9 @@
 import type React from "react"
 import { useState } from "react"
 import { MEALS_DB, type Meal } from "@/lib/mock-data"
-import { ChevronLeft, ChevronRight, Calendar, GripVertical, Trash2, Zap, Plus, Info } from "lucide-react"
+import { ChevronLeft, ChevronRight, CalendarIcon, GripVertical, Trash2, Zap, Plus, Info } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+import { Calendar } from "@/components/ui/calendar"
 
 type ViewMode = "day" | "week" | "month"
 
@@ -20,6 +21,7 @@ export default function MealPlanPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [plannedMeals, setPlannedMeals] = useState<PlannedMeal[]>([])
   const [draggedMeal, setDraggedMeal] = useState<Meal | null>(null)
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
 
   const formatDate = (date: Date) => date.toISOString().split("T")[0]
 
@@ -49,6 +51,128 @@ export default function MealPlanPage() {
 
   const removeMeal = (id: string) => {
     setPlannedMeals(plannedMeals.filter((p) => p.id !== id))
+  }
+
+  const renderDayView = () => {
+    const dateStr = formatDate(selectedDate || new Date())
+    const slots = ["Breakfast", "Lunch", "Dinner", "Snack"] as const
+
+    return (
+      <div className="max-w-2xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-[2rem] shadow-2xl overflow-hidden"
+        >
+          {/* Day Header */}
+          <div className="bg-red-600 text-white p-8 text-center">
+            <div className="text-sm font-bold uppercase tracking-widest mb-2 text-red-100">
+              {(selectedDate || new Date()).toLocaleDateString("en-US", { weekday: "long" })}
+            </div>
+            <div className="text-6xl font-black mb-2">{(selectedDate || new Date()).getDate()}</div>
+            <div className="text-lg font-medium text-red-100">
+              {(selectedDate || new Date()).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+            </div>
+          </div>
+
+          {/* Meal Slots */}
+          <div className="p-8 space-y-6">
+            {slots.map((slot) => (
+              <div key={slot} className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-red-600"></div>
+                    {slot}
+                  </h3>
+                  <Plus size={18} className="text-gray-400" />
+                </div>
+                <div
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => handleDrop(e, dateStr, slot.toLowerCase() as any)}
+                  className="min-h-[120px] rounded-2xl border-2 border-dashed border-gray-200 hover:border-red-300 bg-gray-50/50 p-4 transition-all space-y-3"
+                >
+                  <AnimatePresence>
+                    {plannedMeals
+                      .filter((p) => p.date === dateStr && p.slot === slot.toLowerCase())
+                      .map((plan) => (
+                        <motion.div
+                          layoutId={plan.id}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
+                          key={plan.id}
+                          className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 relative group hover:shadow-lg transition-all"
+                        >
+                          <div className="flex gap-4 items-center">
+                            <img
+                              src={plan.meal.image || "/placeholder.svg"}
+                              className="w-16 h-16 rounded-xl object-cover bg-gray-100"
+                              alt={plan.meal.name}
+                            />
+                            <div className="flex-1">
+                              <div className="font-bold text-gray-900 mb-1">{plan.meal.name}</div>
+                              <div className="text-sm text-gray-500 flex items-center gap-2">
+                                <span className="bg-red-50 text-red-600 px-2 py-1 rounded-md font-bold">
+                                  {plan.meal.calories} kcal
+                                </span>
+                                <span>₹{Math.floor(plan.meal.price * 85)}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => removeMeal(plan.id)}
+                            className="absolute -top-2 -right-2 bg-white border border-red-100 rounded-full p-2 shadow-md text-red-600 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-50"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </motion.div>
+                      ))}
+                  </AnimatePresence>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    )
+  }
+
+  const renderMonthView = () => {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white rounded-[2rem] shadow-2xl p-8"
+        >
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={(date) => {
+              setSelectedDate(date)
+              setViewMode("day")
+            }}
+            className="mx-auto"
+            modifiers={{
+              hasMeals: (date) => {
+                const dateStr = formatDate(date)
+                return plannedMeals.some((p) => p.date === dateStr)
+              },
+            }}
+            modifiersStyles={{
+              hasMeals: {
+                backgroundColor: "#fef2f2",
+                color: "#dc2626",
+                fontWeight: "bold",
+              },
+            }}
+          />
+          <div className="mt-6 p-4 bg-red-50 rounded-xl text-center">
+            <p className="text-sm text-red-600 font-medium">Click on any date to view and plan meals for that day</p>
+          </div>
+        </motion.div>
+      </div>
+    )
   }
 
   const renderWeekView = () => {
@@ -165,7 +289,7 @@ export default function MealPlanPage() {
         <div>
           <h1 className="text-3xl font-black text-gray-900 flex items-center gap-4">
             <div className="bg-red-600 p-3 rounded-2xl text-white shadow-xl shadow-red-200">
-              <Calendar size={28} />
+              <CalendarIcon size={28} />
             </div>
             Smart Planner
           </h1>
@@ -197,8 +321,13 @@ export default function MealPlanPage() {
               <button
                 onClick={() => {
                   const d = new Date(currentDate)
-                  d.setDate(d.getDate() - 7)
+                  d.setDate(d.getDate() - (viewMode === "day" ? 1 : viewMode === "week" ? 7 : 30))
                   setCurrentDate(d)
+                  if (viewMode === "day" && selectedDate) {
+                    const newDate = new Date(selectedDate)
+                    newDate.setDate(newDate.getDate() - 1)
+                    setSelectedDate(newDate)
+                  }
                 }}
                 className="p-2.5 hover:bg-red-50 rounded-xl text-gray-600 hover:text-red-600 transition-colors"
               >
@@ -207,8 +336,13 @@ export default function MealPlanPage() {
               <button
                 onClick={() => {
                   const d = new Date(currentDate)
-                  d.setDate(d.getDate() + 7)
+                  d.setDate(d.getDate() + (viewMode === "day" ? 1 : viewMode === "week" ? 7 : 30))
                   setCurrentDate(d)
+                  if (viewMode === "day" && selectedDate) {
+                    const newDate = new Date(selectedDate)
+                    newDate.setDate(newDate.getDate() + 1)
+                    setSelectedDate(newDate)
+                  }
                 }}
                 className="p-2.5 hover:bg-red-50 rounded-xl text-gray-600 hover:text-red-600 transition-colors"
               >
@@ -282,14 +416,9 @@ export default function MealPlanPage() {
 
         {/* Calendar Area */}
         <div className="flex-1 overflow-auto p-10 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px]">
-          {viewMode === "week" ? (
-            renderWeekView()
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400 font-medium bg-white/50 rounded-[3rem] border-2 border-dashed border-gray-200 m-10 backdrop-blur-sm">
-              <Calendar size={64} className="mb-6 opacity-20" />
-              <p className="text-xl font-bold text-gray-300">This view is coming soon</p>
-            </div>
-          )}
+          {viewMode === "day" && renderDayView()}
+          {viewMode === "week" && renderWeekView()}
+          {viewMode === "month" && renderMonthView()}
         </div>
       </div>
     </div>

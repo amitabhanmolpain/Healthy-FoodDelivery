@@ -136,7 +136,7 @@ export default function WhyJoinUsPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section (Red Background) */}
-      <section className="relative py-32 overflow-hidden bg-brand-red text-white">
+      <section className="relative py-32 overflow-hidden bg-[#ce1126] text-white">
         <div className="absolute inset-0 bg-gradient-to-br from-[#ce1126] to-red-800 opacity-90"></div>
 
         <div className="container mx-auto px-4 relative z-10" ref={heroRef}>
@@ -168,8 +168,8 @@ export default function WhyJoinUsPage() {
       <section className="py-24 bg-gray-50" ref={benefitsRef}>
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-black text-gray-900 mb-4">Why Top Kitchens Choose Us</h2>
-            <p className="text-gray-500 text-lg max-w-2xl mx-auto">
+            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">Why Top Kitchens Choose Us</h2>
+            <p className="text-gray-600 text-lg max-w-2xl mx-auto leading-relaxed">
               We provide the tools and audience you need to scale your food business sustainably.
             </p>
           </div>
@@ -245,7 +245,7 @@ export default function WhyJoinUsPage() {
       </section>
 
       {/* CTA Section (Red Background) */}
-      <section className="py-20 bg-brand-red text-white relative overflow-hidden">
+      <section className="py-20 bg-[#ce1126] text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-[#ce1126] to-red-700 opacity-90"></div>
         <div className="container mx-auto px-4 text-center relative z-10">
           <h2 className="text-4xl lg:text-5xl font-black mb-6">Ready to Partner?</h2>
