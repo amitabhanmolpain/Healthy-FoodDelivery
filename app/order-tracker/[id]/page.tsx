@@ -1,72 +1,114 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { Clock, MapPin, Phone, Star } from "lucide-react"
+import { useState, useEffect, useRef, useMemo } from "react"
+import { Clock, MapPin, Phone, Star, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
+import "leaflet/dist/leaflet.css"
+import { useToast } from "@/hooks/use-toast"
 
 const OPENROUTE_API_KEY =
   "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjYxZDBmNjM1ZTNhMzQ5ZjdhMzY0MzNkZjdiOTAxYjZlIiwiaCI6Im11cm11cjY0In0="
 
 export default function OrderTrackerPage() {
-  const [status, setStatus] = useState<"preparing" | "delivering">("preparing")
+  const { toast } = useToast()
+  const [status, setStatus] = useState<"preparing" | "delivering" | "delivered">("preparing")
   const [timeLeft, setTimeLeft] = useState(25 * 60)
-  const [userLocation, setUserLocation] = useState<[number, number]>([12.9716, 77.6412]) // Default: Bangalore Indiranagar
-  const [restaurantLocation] = useState<[number, number]>([12.9352, 77.6245]) // Koramangala
-  const [driverLocation, setDriverLocation] = useState<[number, number]>(restaurantLocation)
   const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([])
   const [distance, setDistance] = useState<number>(0)
   const [duration, setDuration] = useState<number>(0)
+  const [isMapReady, setIsMapReady] = useState(false)
+  const [userLocationAcquired, setUserLocationAcquired] = useState(false)
+  const [driverSpeed, setDriverSpeed] = useState<number>(0)
+  const [showConfirmation, setShowConfirmation] = useState(false)
+  const [stopTimer, setStopTimer] = useState(false)
+  
+  // Use refs for locations that don't change to avoid dependency issues
+  const userLocationRef = useRef<[number, number]>([12.9716, 77.6412])
+  const restaurantLocationRef = useRef<[number, number]>([12.9352, 77.6245])
+  const driverLocationRef = useRef<[number, number]>([12.9352, 77.6245])
+  
   const mapRef = useRef<any>(null)
   const mapInstanceRef = useRef<any>(null)
   const driverMarkerRef = useRef<any>(null)
+  const restaurantMarkerRef = useRef<any>(null)
+  const userMarkerRef = useRef<any>(null)
   const routeProgressRef = useRef(0)
 
   useEffect(() => {
+    if (!userLocationAcquired) return
+    
     let L: any = null
     
     const initMap = async () => {
       if (typeof window !== "undefined" && mapRef.current && !mapInstanceRef.current) {
-        // Dynamically import Leaflet only on client-side
-        L = (await import("leaflet")).default
-        
-        const map = L.map(mapRef.current).setView([12.9539, 77.6309], 13)
+        try {
+          // Dynamically import Leaflet only on client-side
+          L = (await import("leaflet")).default
+          
+          const map = L.map(mapRef.current, {
+            center: userLocationRef.current,
+            zoom: 13,
+            zoomControl: true,
+            scrollWheelZoom: true
+          })
 
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution: "© OpenStreetMap contributors",
-        }).addTo(map)
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19,
+          }).addTo(map)
 
-        // Restaurant marker
-        const restaurantIcon = L.divIcon({
-          className: "custom-marker",
-          html: `<div class="bg-white p-2 rounded-full shadow-xl border-2 border-gray-900">
-                  <div class="bg-gray-900 p-2 rounded-full text-white text-xs font-bold">REST</div>
-                </div>`,
-          iconSize: [50, 50],
-          iconAnchor: [25, 25],
-        })
-        L.marker(restaurantLocation, { icon: restaurantIcon })
-          .addTo(map)
-          .bindPopup("<b>Restaurant</b><br>Koramangala 4th Block")
-
-        // User location marker
-        const userIcon = L.divIcon({
-          className: "custom-marker",
-          html: `<div class="relative">
-                  <div class="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-20 w-12 h-12"></div>
-                  <div class="bg-white p-2 rounded-full shadow-xl border-2 border-blue-500 relative z-10">
-                    <div class="bg-blue-500 p-2 rounded-full text-white">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2">
-                        <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+          // Restaurant marker
+          const restaurantIcon = L.divIcon({
+            className: "custom-marker",
+            html: `<div class="relative">
+                    <div class="bg-white rounded-2xl shadow-2xl p-3 border-2 border-orange-500">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 10c0-1.1-.9-2-2-2h-1V7c0-1.1-.9-2-2-2h-2V4c0-1.1-.9-2-2-2H9c-1.1 0-2 .9-2 2v1H5c-1.1 0-2 .9-2 2v1H2c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-8z" fill="#FCD34D"/>
+                        <ellipse cx="12" cy="7" rx="6" ry="2" fill="#F59E0B"/>
+                        <path d="M4 12h16v6c0 1.1-.9 2-2 2H6c-1.1 0-2-.9-2-2v-6z" fill="#F97316"/>
+                        <path d="M6 13h12v2H6z" fill="#EA580C"/>
+                        <circle cx="9" cy="10" r="0.5" fill="#DC2626"/>
+                        <circle cx="12" cy="9.5" r="0.5" fill="#DC2626"/>
+                        <circle cx="15" cy="10" r="0.5" fill="#DC2626"/>
                       </svg>
                     </div>
-                  </div>
-                </div>`,
-          iconSize: [50, 50],
-          iconAnchor: [25, 25],
-        })
-        L.marker(userLocation, { icon: userIcon }).addTo(map).bindPopup("<b>Your Location</b><br>Indiranagar")
+                    <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-white"></div>
+                  </div>`,
+            iconSize: [50, 50],
+            iconAnchor: [25, 50],
+          })
+          restaurantMarkerRef.current = L.marker(restaurantLocationRef.current, { icon: restaurantIcon })
+            .addTo(map)
+            .bindPopup("<b>Restaurant</b><br>Preparing your order")
 
-        mapInstanceRef.current = map
+          // User location marker
+          const userIcon = L.divIcon({
+            className: "custom-marker",
+            html: `<div class="relative">
+                    <div class="absolute inset-0 bg-green-500 rounded-full animate-ping opacity-20 w-14 h-14"></div>
+                    <div class="bg-white rounded-2xl shadow-2xl p-3 border-2 border-green-500 relative z-10">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="#22C55E"/>
+                        <path d="M10 14h4v6h-4z" fill="#16A34A"/>
+                      </svg>
+                    </div>
+                    <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-white"></div>
+                  </div>`,
+            iconSize: [50, 50],
+            iconAnchor: [25, 50],
+          })
+          userMarkerRef.current = L.marker(userLocationRef.current, { icon: userIcon }).addTo(map).bindPopup("<b>Your Location</b>")
+
+          mapInstanceRef.current = map
+          setIsMapReady(true)
+          
+          // Force map to refresh after a short delay
+          setTimeout(() => {
+            map.invalidateSize()
+          }, 100)
+        } catch (error) {
+          console.error("Error initializing map:", error)
+        }
       }
     }
     
@@ -79,13 +121,17 @@ export default function OrderTrackerPage() {
         mapInstanceRef.current = null
       }
     }
-  }, [])
+  }, [userLocationAcquired])
 
   useEffect(() => {
+    if (!isMapReady || !mapInstanceRef.current) return
+    
     const fetchRoute = async () => {
       try {
+        const L = (await import("leaflet")).default
+        
         const response = await fetch(
-          `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${OPENROUTE_API_KEY}&start=${restaurantLocation[1]},${restaurantLocation[0]}&end=${userLocation[1]},${userLocation[0]}`,
+          `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${OPENROUTE_API_KEY}&start=${restaurantLocationRef.current[1]},${restaurantLocationRef.current[0]}&end=${userLocationRef.current[1]},${userLocationRef.current[0]}`,
         )
         const data = await response.json()
 
@@ -95,35 +141,74 @@ export default function OrderTrackerPage() {
           )
           setRouteCoordinates(coords)
           setDistance((data.features[0].properties.segments[0].distance / 1000).toFixed(1) as any)
-          setDuration(Math.ceil(data.features[0].properties.segments[0].duration / 60))
+          setDuration(2) // Set to 2 minutes for delivery
 
-          // Draw route on map
-          if (typeof window !== "undefined" && mapInstanceRef.current) {
-            L.polyline(coords, {
-              color: "#ce1126",
-              weight: 4,
-              opacity: 0.7,
-              dashArray: "10, 10",
+          // Draw route with traffic simulation (random segments) and store traffic info
+          const segmentSize = Math.ceil(coords.length / 10)
+          const trafficSegments: boolean[] = []
+          
+          for (let i = 0; i < coords.length - segmentSize; i += segmentSize) {
+            const segmentCoords = coords.slice(i, i + segmentSize)
+            const hasTraffic = Math.random() > 0.6 // 40% chance of traffic
+            trafficSegments.push(hasTraffic)
+            
+            L.polyline(segmentCoords, {
+              color: hasTraffic ? "#DC2626" : "#22C55E",
+              weight: 6,
+              opacity: 0.8,
             }).addTo(mapInstanceRef.current)
-
-            mapInstanceRef.current.fitBounds(L.latLngBounds(coords))
           }
+          
+          // Store traffic info in a ref for speed calculation
+          ;(window as any).trafficSegments = trafficSegments
+          ;(window as any).segmentSize = segmentSize
+
+          mapInstanceRef.current.fitBounds(L.latLngBounds(coords))
         }
       } catch (error) {
-        console.error("[v0] Error fetching route:", error)
+        console.error("Error fetching route:", error)
       }
     }
 
     fetchRoute()
-  }, [restaurantLocation, userLocation])
+  }, [isMapReady])
 
   useEffect(() => {
     if (status === "delivering" && routeCoordinates.length > 0) {
+      // Animation duration: 2 minutes = 120,000ms
+      const totalDurationMs = 120000
+      const intervalMs = 100
+      const totalSteps = totalDurationMs / intervalMs // 1200 steps
+      const increment = routeCoordinates.length / totalSteps // Distance to cover per step
+      
       const animateDriver = setInterval(() => {
-        routeProgressRef.current += 0.3
-        if (routeProgressRef.current >= routeCoordinates.length) {
-          routeProgressRef.current = 0
+        // Stop when reaching destination
+        if (routeProgressRef.current >= routeCoordinates.length - 1) {
+          routeProgressRef.current = routeCoordinates.length - 1
+          clearInterval(animateDriver)
+          
+          // Place driver at exact destination
+          const finalLat = routeCoordinates[routeCoordinates.length - 1][0]
+          const finalLng = routeCoordinates[routeCoordinates.length - 1][1]
+          driverLocationRef.current = [finalLat, finalLng]
+          
+          if (driverMarkerRef.current) {
+            driverMarkerRef.current.setLatLng([finalLat, finalLng])
+          }
+          
+          // Trigger delivery complete
+          setStatus("delivered")
+          setStopTimer(true)
+          setDriverSpeed(0)
+          toast({
+            title: "Driver Reached! 🎉",
+            description: "Your delivery partner has arrived at your location.",
+          })
+          setTimeout(() => setShowConfirmation(true), 1000)
+          return
         }
+
+        routeProgressRef.current += increment
 
         const currentIndex = Math.floor(routeProgressRef.current)
         const nextIndex = Math.min(currentIndex + 1, routeCoordinates.length - 1)
@@ -136,7 +221,19 @@ export default function OrderTrackerPage() {
           routeCoordinates[currentIndex][1] +
           (routeCoordinates[nextIndex][1] - routeCoordinates[currentIndex][1]) * fraction
 
-        setDriverLocation([lat, lng])
+        driverLocationRef.current = [lat, lng]
+        
+        // Calculate realistic speed based on traffic (25-60 km/h for scooter)
+        const trafficSegments = (window as any).trafficSegments || []
+        const segmentSize = (window as any).segmentSize || 1
+        const currentSegment = Math.floor(currentIndex / segmentSize)
+        const hasTraffic = trafficSegments[currentSegment] || false
+        
+        // Scooter speeds: 15-25 km/h in traffic (red), 35-55 km/h in clear roads (green)
+        const baseSpeed = hasTraffic ? (15 + Math.random() * 10) : (35 + Math.random() * 20)
+        // Add slight variation for realism
+        const speed = Math.round(baseSpeed + (Math.random() - 0.5) * 5)
+        setDriverSpeed(Math.min(Math.max(speed, 15), 60)) // Keep between 15-60 km/h
 
         if (typeof window !== "undefined" && mapInstanceRef.current) {
           if (driverMarkerRef.current) {
@@ -145,19 +242,26 @@ export default function OrderTrackerPage() {
             const driverIcon = L.divIcon({
               className: "custom-marker",
               html: `<div class="relative">
-                      <div class="bg-[#ce1126] text-white p-2 rounded-full shadow-2xl border-2 border-white transform scale-110">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <circle cx="18.5" cy="17.5" r="3.5"/>
-                          <circle cx="5.5" cy="17.5" r="3.5"/>
-                          <path d="M15 6h2.5a2.5 2.5 0 1 1 0 5H7.817a2.5 2.5 0 0 1-2.317-1.745L5 8.75"/>
+                      <div class="bg-[#ce1126] rounded-full shadow-2xl p-3 border-4 border-white">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <g transform="translate(12, 12)">
+                            <!-- Scooter simplified icon -->
+                            <circle cx="-5" cy="4" r="2.5" fill="white" stroke="white" stroke-width="0.5"/>
+                            <circle cx="5" cy="4" r="2.5" fill="white" stroke="white" stroke-width="0.5"/>
+                            <path d="M -5 4 L -2 -2 L 3 -2 L 5 4" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="0" cy="-3" r="2" fill="white"/>
+                            <path d="M -2 -2 L -2 -5" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+                            <path d="M 3 -2 L 3 -4" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+                          </g>
                         </svg>
                       </div>
-                      <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-gray-900 px-2 py-1 rounded text-xs font-bold shadow whitespace-nowrap">
+                      <div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-xl whitespace-nowrap">
                         Ramesh • KA 01 EQ 2211
+                        <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900"></div>
                       </div>
                      </div>`,
-              iconSize: [40, 40],
-              iconAnchor: [20, 20],
+              iconSize: [48, 48],
+              iconAnchor: [24, 24],
             })
             driverMarkerRef.current = L.marker([lat, lng], { icon: driverIcon }).addTo(mapInstanceRef.current)
           }
@@ -168,28 +272,50 @@ export default function OrderTrackerPage() {
     }
   }, [status, routeCoordinates])
 
+  // Get user's real location first
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const newLocation: [number, number] = [position.coords.latitude, position.coords.longitude]
-          setUserLocation(newLocation)
-          console.log("[v0] User location acquired:", newLocation)
+          userLocationRef.current = newLocation
+          
+          // Place restaurant within 10km of user - random direction
+          const angle = Math.random() * 2 * Math.PI
+          const distanceKm = Math.random() * 8 + 2 // 2-10 km
+          const latOffset = (distanceKm / 111.32) * Math.cos(angle) // 111.32 km per degree latitude
+          const lngOffset = (distanceKm / (111.32 * Math.cos(newLocation[0] * Math.PI / 180))) * Math.sin(angle)
+          
+          restaurantLocationRef.current = [
+            newLocation[0] + latOffset,
+            newLocation[1] + lngOffset
+          ]
+          driverLocationRef.current = restaurantLocationRef.current
+          
+          console.log("User location acquired:", newLocation)
+          console.log("Restaurant placed at:", restaurantLocationRef.current, `(${distanceKm.toFixed(1)}km away)`)
+          setUserLocationAcquired(true)
         },
         (error) => {
-          console.log("[v0] Using default Bangalore location", error)
+          console.log("Using default Bangalore location", error)
+          setUserLocationAcquired(true)
         },
       )
+    } else {
+      setUserLocationAcquired(true)
     }
   }, [])
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0))
+      if (!stopTimer) {
+        setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0))
+      }
     }, 1000)
 
     const statusTimer = setTimeout(() => {
       setStatus("delivering")
+      setTimeLeft(2 * 60) // Set to exactly 2 minutes when delivery starts
     }, 5000)
 
     return () => {
@@ -230,6 +356,13 @@ export default function OrderTrackerPage() {
             <div className="text-2xl font-black text-gray-900">{distance} km</div>
             {duration > 0 && <div className="text-xs text-gray-500 mt-1">{duration} min away</div>}
           </div>
+          
+          {status === "delivering" && driverSpeed > 0 && (
+            <div className="absolute top-4 right-4 bg-gradient-to-r from-[#ce1126] to-red-600 text-white px-4 py-3 rounded-xl shadow-lg z-10">
+              <div className="text-xs font-bold uppercase mb-1">Driver Speed</div>
+              <div className="text-2xl font-black font-mono">{driverSpeed} km/h</div>
+            </div>
+          )}
         </div>
 
         {/* Status Panel */}
@@ -244,13 +377,21 @@ export default function OrderTrackerPage() {
                 <h1 className="text-2xl font-black text-gray-900 mb-1">Preparing Your Order</h1>
                 <p className="text-sm text-gray-500">Kitchen is busy crafting your meal</p>
               </>
-            ) : (
+            ) : status === "delivering" ? (
               <>
                 <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
                   <MapPin size={32} className="text-[#ce1126]" fill="currentColor" />
                 </div>
                 <h1 className="text-2xl font-black text-gray-900 mb-1">Out for Delivery</h1>
                 <p className="text-sm text-gray-500">Rider is moving to your location</p>
+              </>
+            ) : (
+              <>
+                <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle2 size={32} className="text-green-500" />
+                </div>
+                <h1 className="text-2xl font-black text-gray-900 mb-1">Delivered</h1>
+                <p className="text-sm text-gray-500">Your order has been delivered</p>
               </>
             )}
 
@@ -269,7 +410,7 @@ export default function OrderTrackerPage() {
               </div>
               <div className="relative pl-6">
                 <div
-                  className={`absolute -left-[21px] top-1 w-4 h-4 rounded-full ring-4 ring-white ${status === "preparing" || status === "delivering" ? "bg-green-500" : "bg-gray-300"}`}
+                  className={`absolute -left-[21px] top-1 w-4 h-4 rounded-full ring-4 ring-white ${status === "preparing" || status === "delivering" || status === "delivered" ? "bg-green-500" : "bg-gray-300"}`}
                 ></div>
                 <h4 className="font-bold text-sm">Preparing</h4>
                 {status === "preparing" && (
@@ -278,11 +419,20 @@ export default function OrderTrackerPage() {
               </div>
               <div className="relative pl-6">
                 <div
-                  className={`absolute -left-[21px] top-1 w-4 h-4 rounded-full ring-4 ring-white ${status === "delivering" ? "bg-green-500" : "bg-gray-300"}`}
+                  className={`absolute -left-[21px] top-1 w-4 h-4 rounded-full ring-4 ring-white ${status === "delivering" || status === "delivered" ? "bg-green-500" : "bg-gray-300"}`}
                 ></div>
                 <h4 className="font-bold text-sm">Out for Delivery</h4>
                 {status === "delivering" && (
                   <span className="text-xs text-[#ce1126] font-bold animate-pulse">Live</span>
+                )}
+              </div>
+              <div className="relative pl-6">
+                <div
+                  className={`absolute -left-[21px] top-1 w-4 h-4 rounded-full ring-4 ring-white ${status === "delivered" ? "bg-green-500" : "bg-gray-300"}`}
+                ></div>
+                <h4 className="font-bold text-sm">Delivered</h4>
+                {status === "delivered" && (
+                  <span className="text-xs text-green-500 font-bold animate-pulse">Completed</span>
                 )}
               </div>
             </div>
@@ -316,6 +466,35 @@ export default function OrderTrackerPage() {
           </Link>
         </div>
       </div>
+      
+      {/* Delivery Confirmation Modal */}
+      {showConfirmation && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-in fade-in zoom-in duration-300">
+            <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle2 size={56} className="text-green-500" />
+            </div>
+            <h2 className="text-3xl font-black text-gray-900 mb-3">Delivery Complete!</h2>
+            <p className="text-gray-600 mb-6">
+              Your driver <span className="font-bold">Ramesh Kumar</span> has reached your location.
+              Please collect your order.
+            </p>
+            <div className="bg-gray-50 rounded-xl p-4 mb-6">
+              <div className="text-sm text-gray-500 mb-1">Order Number</div>
+              <div className="text-2xl font-bold text-gray-900">#8829-XJ</div>
+            </div>
+            <button
+              onClick={() => setShowConfirmation(false)}
+              className="w-full bg-gradient-to-r from-[#ce1126] to-red-600 text-white py-4 rounded-xl font-bold hover:shadow-lg transition-all"
+            >
+              Confirm Receipt
+            </button>
+            <Link href="/" className="block mt-3 text-sm text-gray-500 hover:text-gray-700">
+              Back to Home
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
