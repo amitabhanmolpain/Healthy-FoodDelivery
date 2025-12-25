@@ -5,6 +5,7 @@ out/
 # Build files
 build/
 dist/
+*.tsbuildinfo
 
 # Logs
 npm-debug.log*
