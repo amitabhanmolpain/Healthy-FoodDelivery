@@ -1,4 +1,5 @@
 import { ShieldCheck, TestTube, Users, ScanLine } from "lucide-react"
+import Image from "next/image"
 
 export default function SourcingPage() {
   return (
@@ -27,8 +28,19 @@ export default function SourcingPage() {
           {/* Step 1 */}
           <div className="flex flex-col md:flex-row gap-20 items-center group">
             <div className="flex-1 order-2 md:order-1">
-              <div className="w-24 h-24 bg-red-50 rounded-3xl flex items-center justify-center text-[#ce1126] mb-10 group-hover:bg-[#ce1126] group-hover:text-white transition-all duration-300 shadow-sm">
-                <Users size={48} />
+              <div className="w-24 h-24 bg-red-50 rounded-3xl flex items-center justify-center text-[#ce1126] mb-10 group-hover:bg-[#ce1126] group-hover:text-white transition-all duration-300 shadow-sm relative overflow-hidden cursor-pointer">
+                {/* Background Image on Hover */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                  <Image
+                    src="https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=400&q=80"
+                    alt="Farmers working"
+                    fill
+                    className="object-cover"
+                    sizes="96px"
+                  />
+                  <div className="absolute inset-0 bg-[#ce1126]/70"></div>
+                </div>
+                <Users size={48} className="relative z-10" />
               </div>
               <h2 className="text-5xl font-black mb-8 text-gray-900">1. Direct Partner Farms</h2>
               <p className="text-xl text-gray-600 leading-relaxed mb-10">
@@ -50,28 +62,63 @@ export default function SourcingPage() {
               </ul>
             </div>
             <div className="flex-1 order-1 md:order-2 relative">
-              <div className="absolute inset-0 bg-[#ce1126] rounded-[3rem] rotate-6 opacity-10 group-hover:rotate-12 transition-transform duration-500"></div>
-              <img
-                src="/organic-farm-aerial.jpg"
-                alt="Partner Farm Aerial View"
-                className="relative rounded-[3rem] shadow-2xl rotate-2 group-hover:rotate-0 transition-transform duration-500 object-cover w-full h-[500px]"
-              />
+              <div className="absolute inset-0 rounded-[3rem] rotate-6 group-hover:rotate-12 transition-all duration-500 overflow-hidden">
+                <Image
+                  src="https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=800&q=80"
+                  alt="Agricultural background"
+                  fill
+                  className="object-cover transition-opacity duration-500 opacity-20 group-hover:opacity-100"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                />
+              </div>
+              <div className="relative rounded-[3rem] shadow-2xl rotate-2 group-hover:rotate-0 transition-transform duration-500 overflow-hidden w-full h-[500px] bg-gradient-to-br from-green-50 to-green-100">
+                <Image
+                  src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&q=80"
+                  alt="Organic Farm Aerial View"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                />
+              </div>
             </div>
           </div>
 
           {/* Step 2 */}
           <div className="flex flex-col md:flex-row gap-20 items-center group">
             <div className="flex-1 relative">
-              <div className="absolute inset-0 bg-[#ce1126] rounded-[3rem] -rotate-6 opacity-5 group-hover:-rotate-12 transition-transform duration-500"></div>
-              <img
-                src="/scientist-lab-food-test.jpg"
-                alt="Lab Testing"
-                className="relative rounded-[3rem] shadow-2xl -rotate-2 group-hover:rotate-0 transition-transform duration-500 object-cover w-full h-[500px]"
-              />
+              <div className="absolute inset-0 rounded-[3rem] -rotate-6 group-hover:-rotate-12 transition-all duration-500 overflow-hidden">
+                <Image
+                  src="https://images.unsplash.com/photo-1530026405186-ed1f139313f8?w=800&q=80"
+                  alt="Science laboratory background"
+                  fill
+                  className="object-cover transition-opacity duration-500 opacity-20 group-hover:opacity-100"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                />
+              </div>
+              <div className="relative rounded-[3rem] shadow-2xl -rotate-2 group-hover:rotate-0 transition-transform duration-500 overflow-hidden w-full h-[500px] bg-gradient-to-br from-blue-50 to-blue-100">
+                <Image
+                  src="https://images.unsplash.com/photo-1582719471137-c3967ffb1c42?w=800&q=80"
+                  alt="Lab Testing Food Quality"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                />
+              </div>
             </div>
             <div className="flex-1">
-              <div className="w-24 h-24 bg-red-50 rounded-3xl flex items-center justify-center text-[#ce1126] mb-10 group-hover:bg-[#ce1126] group-hover:text-white transition-all duration-300 shadow-sm">
-                <TestTube size={48} />
+              <div className="w-24 h-24 bg-red-50 rounded-3xl flex items-center justify-center text-[#ce1126] mb-10 group-hover:bg-[#ce1126] group-hover:text-white transition-all duration-300 shadow-sm relative overflow-hidden cursor-pointer">
+                {/* Background Image on Hover */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                  <Image
+                    src="https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?w=400&q=80"
+                    alt="Lab scientist testing"
+                    fill
+                    className="object-cover"
+                    sizes="96px"
+                  />
+                  <div className="absolute inset-0 bg-[#ce1126]/70"></div>
+                </div>
+                <TestTube size={48} className="relative z-10" />
               </div>
               <h2 className="text-5xl font-black mb-8 text-gray-900">2. Lab Testing Every Batch</h2>
               <p className="text-xl text-gray-600 leading-relaxed mb-10">
@@ -94,8 +141,19 @@ export default function SourcingPage() {
           {/* Step 3 - Fake Scanner */}
           <div className="flex flex-col md:flex-row gap-20 items-center">
             <div className="flex-1 order-2 md:order-1">
-              <div className="w-24 h-24 bg-red-50 rounded-3xl flex items-center justify-center text-[#ce1126] mb-10 shadow-sm">
-                <ShieldCheck size={48} />
+              <div className="w-24 h-24 bg-red-50 rounded-3xl flex items-center justify-center text-[#ce1126] mb-10 shadow-sm relative overflow-hidden cursor-pointer group-hover:bg-[#ce1126] group-hover:text-white transition-all duration-300">
+                {/* Background Image on Hover */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                  <Image
+                    src="https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=400&q=80"
+                    alt="QR Code scanning technology"
+                    fill
+                    className="object-cover"
+                    sizes="96px"
+                  />
+                  <div className="absolute inset-0 bg-[#ce1126]/70"></div>
+                </div>
+                <ShieldCheck size={48} className="relative z-10" />
               </div>
               <h2 className="text-5xl font-black mb-8 text-gray-900">3. The PurePlate Scanner</h2>
               <p className="text-xl text-gray-600 leading-relaxed mb-10">
@@ -124,11 +182,15 @@ export default function SourcingPage() {
                 {/* Screen Content */}
                 <div className="flex-1 bg-black relative overflow-hidden">
                   {/* Camera View Simulation */}
-                  <img
-                    src="/healthy-salad-bowl.png"
-                    className="absolute inset-0 w-full h-full object-cover opacity-80"
-                    alt="Camera Feed"
-                  />
+                  <div className="absolute inset-0 w-full h-full">
+                    <Image
+                      src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&q=80"
+                      alt="Healthy Salad Bowl"
+                      fill
+                      className="object-cover opacity-80"
+                      sizes="340px"
+                    />
+                  </div>
 
                   {/* Scanner Overlay */}
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20">
