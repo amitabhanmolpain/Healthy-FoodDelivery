@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, useEffect, useRef, useMemo } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Clock, MapPin, Phone, Star, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
 import "leaflet/dist/leaflet.css"
 import { useToast } from "@/hooks/use-toast"
 
-const OPENROUTE_API_KEY =
+const OPENROUTE_API_KEY = process.env.NEXT_PUBLIC_OPENROUTE_API_KEY || 
   "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjYxZDBmNjM1ZTNhMzQ5ZjdhMzY0MzNkZjdiOTAxYjZlIiwiaCI6Im11cm11cjY0In0="
 
-export default function OrderTrackerPage() {
+export default function OrderTrackerPage({ params }: { params: { id: string } }) {
   const { toast } = useToast()
   const [status, setStatus] = useState<"preparing" | "delivering" | "delivered">("preparing")
   const [timeLeft, setTimeLeft] = useState(25 * 60)
@@ -33,6 +33,13 @@ export default function OrderTrackerPage() {
   const restaurantMarkerRef = useRef<any>(null)
   const userMarkerRef = useRef<any>(null)
   const routeProgressRef = useRef(0)
+  
+  // Store traffic data in refs instead of window object
+  const trafficSegmentsRef = useRef<boolean[]>([])
+  const segmentSizeRef = useRef<number>(1)
+  
+  // Store route layers for cleanup
+  const routeLayersRef = useRef<any[]>([])
 
   useEffect(() => {
     if (!userLocationAcquired) return
@@ -99,13 +106,15 @@ export default function OrderTrackerPage() {
           })
           userMarkerRef.current = L.marker(userLocationRef.current, { icon: userIcon }).addTo(map).bindPopup("<b>Your Location</b>")
 
-          mapInstanceRef.current = map
-          setIsMapReady(true)
-          
-          // Force map to refresh after a short delay
-          setTimeout(() => {
-            map.invalidateSize()
-          }, 100)
+          map.whenReady(() => {
+            mapInstanceRef.current = map
+            setIsMapReady(true)
+            
+            // Force map to refresh after a short delay, once the map is ready
+            setTimeout(() => {
+              map.invalidateSize()
+            }, 100)
+          })
         } catch (error) {
           console.error("Error initializing map:", error)
         }
@@ -141,7 +150,22 @@ export default function OrderTrackerPage() {
           )
           setRouteCoordinates(coords)
           setDistance((data.features[0].properties.segments[0].distance / 1000).toFixed(1) as any)
-          setDuration(2) // Set to 2 minutes for delivery
+          
+          // Use actual duration from API or fallback to 2 minutes
+          const apiDurationSeconds = data.features[0].properties.segments?.[0]?.duration
+          const durationInMinutes =
+            typeof apiDurationSeconds === "number" && apiDurationSeconds > 0
+              ? Math.ceil(apiDurationSeconds / 60)
+              : 2 // Fallback to 2 minutes if API duration is unavailable
+          setDuration(durationInMinutes)
+
+          // Remove old route layers before drawing new ones
+          routeLayersRef.current.forEach(layer => {
+            if (mapInstanceRef.current) {
+              mapInstanceRef.current.removeLayer(layer)
+            }
+          })
+          routeLayersRef.current = []
 
           // Draw route with traffic simulation (random segments) and store traffic info
           const segmentSize = Math.ceil(coords.length / 10)
@@ -152,16 +176,18 @@ export default function OrderTrackerPage() {
             const hasTraffic = Math.random() > 0.6 // 40% chance of traffic
             trafficSegments.push(hasTraffic)
             
-            L.polyline(segmentCoords, {
+            const polyline = L.polyline(segmentCoords, {
               color: hasTraffic ? "#DC2626" : "#22C55E",
               weight: 6,
               opacity: 0.8,
             }).addTo(mapInstanceRef.current)
+            
+            routeLayersRef.current.push(polyline)
           }
           
-          // Store traffic info in a ref for speed calculation
-          ;(window as any).trafficSegments = trafficSegments
-          ;(window as any).segmentSize = segmentSize
+          // Store traffic info in refs instead of window object
+          trafficSegmentsRef.current = trafficSegments
+          segmentSizeRef.current = segmentSize
 
           mapInstanceRef.current.fitBounds(L.latLngBounds(coords))
         }
@@ -223,16 +249,28 @@ export default function OrderTrackerPage() {
 
         driverLocationRef.current = [lat, lng]
         
-        // Calculate realistic speed based on traffic (25-60 km/h for scooter)
-        const trafficSegments = (window as any).trafficSegments || []
-        const segmentSize = (window as any).segmentSize || 1
-        const currentSegment = Math.floor(currentIndex / segmentSize)
-        const hasTraffic = trafficSegments[currentSegment] || false
+        // Calculate realistic speed based on traffic (15-60 km/h for scooter)
+        let speed: number
+
+        if (
+          Array.isArray(trafficSegmentsRef.current) &&
+          trafficSegmentsRef.current.length > 0
+        ) {
+          const trafficSegments = trafficSegmentsRef.current
+          const segmentSize = segmentSizeRef.current
+          const currentSegment = Math.floor(currentIndex / segmentSize)
+          const hasTraffic = Boolean(trafficSegments[currentSegment])
+          
+          // Scooter speeds: 15-25 km/h in traffic (red), 35-55 km/h in clear roads (green)
+          const baseSpeed = hasTraffic ? 15 + Math.random() * 10 : 35 + Math.random() * 20
+          // Add slight variation for realism
+          speed = Math.round(baseSpeed + (Math.random() - 0.5) * 5)
+        } else {
+          // Fallback speed when traffic data is unavailable
+          const fallbackBaseSpeed = 25 + Math.random() * 15 // 25-40 km/h
+          speed = Math.round(fallbackBaseSpeed + (Math.random() - 0.5) * 5)
+        }
         
-        // Scooter speeds: 15-25 km/h in traffic (red), 35-55 km/h in clear roads (green)
-        const baseSpeed = hasTraffic ? (15 + Math.random() * 10) : (35 + Math.random() * 20)
-        // Add slight variation for realism
-        const speed = Math.round(baseSpeed + (Math.random() - 0.5) * 5)
         setDriverSpeed(Math.min(Math.max(speed, 15), 60)) // Keep between 15-60 km/h
 
         if (typeof window !== "undefined" && mapInstanceRef.current) {
@@ -270,7 +308,7 @@ export default function OrderTrackerPage() {
 
       return () => clearInterval(animateDriver)
     }
-  }, [status, routeCoordinates])
+  }, [status, routeCoordinates, toast])
 
   // Get user's real location first
   useEffect(() => {
@@ -283,7 +321,11 @@ export default function OrderTrackerPage() {
           // Place restaurant within 10km of user - random direction
           const angle = Math.random() * 2 * Math.PI
           const distanceKm = Math.random() * 8 + 2 // 2-10 km
-          const latOffset = (distanceKm / 111.32) * Math.cos(angle) // 111.32 km per degree latitude
+          
+          // Correct distance calculation formula
+          // 111.32 km per degree latitude (constant)
+          // For longitude, it varies by latitude: 111.32 * cos(latitude)
+          const latOffset = (distanceKm / 111.32) * Math.cos(angle)
           const lngOffset = (distanceKm / (111.32 * Math.cos(newLocation[0] * Math.PI / 180))) * Math.sin(angle)
           
           restaurantLocationRef.current = [
@@ -292,19 +334,27 @@ export default function OrderTrackerPage() {
           ]
           driverLocationRef.current = restaurantLocationRef.current
           
-          console.log("User location acquired:", newLocation)
-          console.log("Restaurant placed at:", restaurantLocationRef.current, `(${distanceKm.toFixed(1)}km away)`)
           setUserLocationAcquired(true)
         },
         (error) => {
-          console.log("Using default Bangalore location", error)
+          console.error("Using default Bangalore location. Geolocation error:", error)
+          toast({
+            variant: "destructive",
+            title: "Location access unavailable",
+            description: "Showing estimates from a default location instead.",
+          })
           setUserLocationAcquired(true)
         },
       )
     } else {
+      toast({
+        variant: "destructive",
+        title: "Location not supported",
+        description: "Your browser does not support location access. Showing default estimates.",
+      })
       setUserLocationAcquired(true)
     }
-  }, [])
+  }, [toast])
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -314,8 +364,9 @@ export default function OrderTrackerPage() {
     }, 1000)
 
     const statusTimer = setTimeout(() => {
+      // Transition to delivering without resetting the countdown,
+      // so total time (preparing + delivering) remains consistent.
       setStatus("delivering")
-      setTimeLeft(2 * 60) // Set to exactly 2 minutes when delivery starts
     }, 5000)
 
     return () => {
@@ -338,7 +389,7 @@ export default function OrderTrackerPage() {
           <Link href="/" className="font-black text-2xl tracking-tight">
             Pure<span className="text-[#ce1126]">Plate</span>
           </Link>
-          <div className="text-sm font-bold text-gray-500">Order #8829-XJ</div>
+          <div className="text-sm font-bold text-gray-500">Order #{params.id}</div>
         </div>
       </header>
 
@@ -476,12 +527,12 @@ export default function OrderTrackerPage() {
             </div>
             <h2 className="text-3xl font-black text-gray-900 mb-3">Delivery Complete!</h2>
             <p className="text-gray-600 mb-6">
-              Your driver <span className="font-bold">Ramesh Kumar</span> has reached your location.
+              Your driver <span className="font-bold">Ramesh • KA 01 EQ 2211</span> has reached your location.
               Please collect your order.
             </p>
             <div className="bg-gray-50 rounded-xl p-4 mb-6">
               <div className="text-sm text-gray-500 mb-1">Order Number</div>
-              <div className="text-2xl font-bold text-gray-900">#8829-XJ</div>
+              <div className="text-2xl font-bold text-gray-900">#{params.id}</div>
             </div>
             <button
               onClick={() => setShowConfirmation(false)}
