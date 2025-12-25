@@ -5,10 +5,15 @@ import type { Meal } from "@/lib/mock-data"
 import { Star, ShoppingCart, Dumbbell } from "lucide-react"
 import { useCart } from "@/context/CartContext"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/context/AuthContext"
+import { useState } from "react"
+import AuthModal from "@/components/ui/AuthModal"
 
 export default function MealCard({ meal, onMealClick }: { meal: Meal; onMealClick?: (meal: Meal) => void }) {
   const { addItem } = useCart()
   const { toast } = useToast()
+  const { user } = useAuth()
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Prevent bubbling if clicking specific actions
@@ -43,6 +48,10 @@ export default function MealCard({ meal, onMealClick }: { meal: Meal; onMealClic
         <button
           onClick={(e) => {
             e.stopPropagation()
+            if (!user) {
+              setIsAuthModalOpen(true)
+              return
+            }
             addItem(meal)
             toast({
               title: "Added to cart",
@@ -97,6 +106,8 @@ export default function MealCard({ meal, onMealClick }: { meal: Meal; onMealClic
           </div>
         </div>
       </div>
+
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} initialMode="login" />
     </div>
   )
 }

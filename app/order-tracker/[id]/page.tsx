@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react"
 import { Clock, MapPin, Phone, Star } from "lucide-react"
 import Link from "next/link"
-import L from "leaflet"
 
 const OPENROUTE_API_KEY =
   "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjYxZDBmNjM1ZTNhMzQ5ZjdhMzY0MzNkZjdiOTAxYjZlIiwiaCI6Im11cm11cjY0In0="
@@ -23,45 +22,62 @@ export default function OrderTrackerPage() {
   const routeProgressRef = useRef(0)
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const map = L.map(mapRef.current).setView([12.9539, 77.6309], 13)
+    let L: any = null
+    
+    const initMap = async () => {
+      if (typeof window !== "undefined" && mapRef.current && !mapInstanceRef.current) {
+        // Dynamically import Leaflet only on client-side
+        L = (await import("leaflet")).default
+        
+        const map = L.map(mapRef.current).setView([12.9539, 77.6309], 13)
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
-      }).addTo(map)
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "© OpenStreetMap contributors",
+        }).addTo(map)
 
-      // Restaurant marker
-      const restaurantIcon = L.divIcon({
-        className: "custom-marker",
-        html: `<div class="bg-white p-2 rounded-full shadow-xl border-2 border-gray-900">
-                <div class="bg-gray-900 p-2 rounded-full text-white text-xs font-bold">REST</div>
-               </div>`,
-        iconSize: [50, 50],
-        iconAnchor: [25, 25],
-      })
-      L.marker(restaurantLocation, { icon: restaurantIcon })
-        .addTo(map)
-        .bindPopup("<b>Restaurant</b><br>Koramangala 4th Block")
+        // Restaurant marker
+        const restaurantIcon = L.divIcon({
+          className: "custom-marker",
+          html: `<div class="bg-white p-2 rounded-full shadow-xl border-2 border-gray-900">
+                  <div class="bg-gray-900 p-2 rounded-full text-white text-xs font-bold">REST</div>
+                </div>`,
+          iconSize: [50, 50],
+          iconAnchor: [25, 25],
+        })
+        L.marker(restaurantLocation, { icon: restaurantIcon })
+          .addTo(map)
+          .bindPopup("<b>Restaurant</b><br>Koramangala 4th Block")
 
-      // User location marker
-      const userIcon = L.divIcon({
-        className: "custom-marker",
-        html: `<div class="relative">
-                <div class="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-20 w-12 h-12"></div>
-                <div class="bg-white p-2 rounded-full shadow-xl border-2 border-blue-500 relative z-10">
-                  <div class="bg-blue-500 p-2 rounded-full text-white">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2">
-                      <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
-                    </svg>
+        // User location marker
+        const userIcon = L.divIcon({
+          className: "custom-marker",
+          html: `<div class="relative">
+                  <div class="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-20 w-12 h-12"></div>
+                  <div class="bg-white p-2 rounded-full shadow-xl border-2 border-blue-500 relative z-10">
+                    <div class="bg-blue-500 p-2 rounded-full text-white">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2">
+                        <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+                      </svg>
+                    </div>
                   </div>
-                </div>
-               </div>`,
-        iconSize: [50, 50],
-        iconAnchor: [25, 25],
-      })
-      L.marker(userLocation, { icon: userIcon }).addTo(map).bindPopup("<b>Your Location</b><br>Indiranagar")
+                </div>`,
+          iconSize: [50, 50],
+          iconAnchor: [25, 25],
+        })
+        L.marker(userLocation, { icon: userIcon }).addTo(map).bindPopup("<b>Your Location</b><br>Indiranagar")
 
-      mapInstanceRef.current = map
+        mapInstanceRef.current = map
+      }
+    }
+    
+    initMap()
+
+    // Cleanup function to remove map when component unmounts
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove()
+        mapInstanceRef.current = null
+      }
     }
   }, [])
 

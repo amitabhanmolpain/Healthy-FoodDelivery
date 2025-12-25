@@ -65,7 +65,7 @@ export default function BusinessLoginPage() {
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-500">
               Not a partner yet?{" "}
-              <Link href="#" className="text-red-600 font-bold hover:underline">
+              <Link href="/business/signup" className="text-red-600 font-bold hover:underline">
                 Apply to join
               </Link>
             </p>

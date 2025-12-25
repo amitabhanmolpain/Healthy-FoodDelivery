@@ -77,7 +77,7 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center space-x-4">
-            {!isLandingPage && (
+            {!isLandingPage && user && (
               <>
                 <button className="p-2 hover:bg-gray-100 rounded-full text-gray-500 hover:text-red-600 transition-colors">
                   <Search size={20} />

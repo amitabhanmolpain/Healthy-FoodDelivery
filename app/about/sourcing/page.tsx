@@ -88,8 +88,8 @@ export default function SourcingPage() {
             <div className="flex-1 relative">
               <div className="absolute inset-0 rounded-[3rem] -rotate-6 group-hover:-rotate-12 transition-all duration-500 overflow-hidden">
                 <Image
-                  src="https://images.unsplash.com/photo-1530026405186-ed1f139313f8?w=800&q=80"
-                  alt="Science laboratory background"
+                  src="https://images.unsplash.com/photo-1585435557343-3b092031a831?w=800&q=80"
+                  alt="Laboratory test tubes"
                   fill
                   className="object-cover transition-opacity duration-500 opacity-20 group-hover:opacity-100"
                   sizes="(max-width: 768px) 100vw, 50vw"
