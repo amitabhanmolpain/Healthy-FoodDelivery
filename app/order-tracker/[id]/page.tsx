@@ -292,12 +292,9 @@ export default function OrderTrackerPage() {
           ]
           driverLocationRef.current = restaurantLocationRef.current
           
-          console.log("User location acquired:", newLocation)
-          console.log("Restaurant placed at:", restaurantLocationRef.current, `(${distanceKm.toFixed(1)}km away)`)
           setUserLocationAcquired(true)
         },
         (error) => {
-          console.log("Using default Bangalore location", error)
           setUserLocationAcquired(true)
         },
       )
