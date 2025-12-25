@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { Clock, MapPin, Phone, Star } from "lucide-react"
 import Link from "next/link"
+import "leaflet/dist/leaflet.css"
 
 const OPENROUTE_API_KEY =
   "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjYxZDBmNjM1ZTNhMzQ5ZjdhMzY0MzNkZjdiOTAxYjZlIiwiaCI6Im11cm11cjY0In0="
@@ -10,63 +11,88 @@ const OPENROUTE_API_KEY =
 export default function OrderTrackerPage() {
   const [status, setStatus] = useState<"preparing" | "delivering">("preparing")
   const [timeLeft, setTimeLeft] = useState(25 * 60)
-  const [userLocation, setUserLocation] = useState<[number, number]>([12.9716, 77.6412]) // Default: Bangalore Indiranagar
-  const [restaurantLocation] = useState<[number, number]>([12.9352, 77.6245]) // Koramangala
-  const [driverLocation, setDriverLocation] = useState<[number, number]>(restaurantLocation)
   const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([])
   const [distance, setDistance] = useState<number>(0)
   const [duration, setDuration] = useState<number>(0)
+  const [isMapReady, setIsMapReady] = useState(false)
+  const [userLocationAcquired, setUserLocationAcquired] = useState(false)
+  
+  // Use refs for locations that don't change to avoid dependency issues
+  const userLocationRef = useRef<[number, number]>([12.9716, 77.6412])
+  const restaurantLocationRef = useRef<[number, number]>([12.9352, 77.6245])
+  const driverLocationRef = useRef<[number, number]>([12.9352, 77.6245])
+  
   const mapRef = useRef<any>(null)
   const mapInstanceRef = useRef<any>(null)
   const driverMarkerRef = useRef<any>(null)
+  const restaurantMarkerRef = useRef<any>(null)
+  const userMarkerRef = useRef<any>(null)
   const routeProgressRef = useRef(0)
 
   useEffect(() => {
+    if (!userLocationAcquired) return
+    
     let L: any = null
     
     const initMap = async () => {
       if (typeof window !== "undefined" && mapRef.current && !mapInstanceRef.current) {
-        // Dynamically import Leaflet only on client-side
-        L = (await import("leaflet")).default
-        
-        const map = L.map(mapRef.current).setView([12.9539, 77.6309], 13)
+        try {
+          // Dynamically import Leaflet only on client-side
+          L = (await import("leaflet")).default
+          
+          const map = L.map(mapRef.current, {
+            center: userLocationRef.current,
+            zoom: 13,
+            zoomControl: true,
+            scrollWheelZoom: true
+          })
 
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution: "© OpenStreetMap contributors",
-        }).addTo(map)
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19,
+          }).addTo(map)
 
-        // Restaurant marker
-        const restaurantIcon = L.divIcon({
-          className: "custom-marker",
-          html: `<div class="bg-white p-2 rounded-full shadow-xl border-2 border-gray-900">
-                  <div class="bg-gray-900 p-2 rounded-full text-white text-xs font-bold">REST</div>
-                </div>`,
-          iconSize: [50, 50],
-          iconAnchor: [25, 25],
-        })
-        L.marker(restaurantLocation, { icon: restaurantIcon })
-          .addTo(map)
-          .bindPopup("<b>Restaurant</b><br>Koramangala 4th Block")
+          // Restaurant marker
+          const restaurantIcon = L.divIcon({
+            className: "custom-marker",
+            html: `<div class="bg-white p-2 rounded-full shadow-xl border-2 border-gray-900">
+                    <div class="bg-gray-900 p-2 rounded-full text-white text-xs font-bold">REST</div>
+                  </div>`,
+            iconSize: [50, 50],
+            iconAnchor: [25, 25],
+          })
+          restaurantMarkerRef.current = L.marker(restaurantLocationRef.current, { icon: restaurantIcon })
+            .addTo(map)
+            .bindPopup("<b>Restaurant</b><br>Preparing your order")
 
-        // User location marker
-        const userIcon = L.divIcon({
-          className: "custom-marker",
-          html: `<div class="relative">
-                  <div class="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-20 w-12 h-12"></div>
-                  <div class="bg-white p-2 rounded-full shadow-xl border-2 border-blue-500 relative z-10">
-                    <div class="bg-blue-500 p-2 rounded-full text-white">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2">
-                        <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
-                      </svg>
+          // User location marker
+          const userIcon = L.divIcon({
+            className: "custom-marker",
+            html: `<div class="relative">
+                    <div class="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-20 w-12 h-12"></div>
+                    <div class="bg-white p-2 rounded-full shadow-xl border-2 border-blue-500 relative z-10">
+                      <div class="bg-blue-500 p-2 rounded-full text-white">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2">
+                          <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+                        </svg>
+                      </div>
                     </div>
-                  </div>
-                </div>`,
-          iconSize: [50, 50],
-          iconAnchor: [25, 25],
-        })
-        L.marker(userLocation, { icon: userIcon }).addTo(map).bindPopup("<b>Your Location</b><br>Indiranagar")
+                  </div>`,
+            iconSize: [50, 50],
+            iconAnchor: [25, 25],
+          })
+          userMarkerRef.current = L.marker(userLocationRef.current, { icon: userIcon }).addTo(map).bindPopup("<b>Your Location</b>")
 
-        mapInstanceRef.current = map
+          mapInstanceRef.current = map
+          setIsMapReady(true)
+          
+          // Force map to refresh after a short delay
+          setTimeout(() => {
+            map.invalidateSize()
+          }, 100)
+        } catch (error) {
+          console.error("Error initializing map:", error)
+        }
       }
     }
     
@@ -79,13 +105,17 @@ export default function OrderTrackerPage() {
         mapInstanceRef.current = null
       }
     }
-  }, [])
+  }, [userLocationAcquired])
 
   useEffect(() => {
+    if (!isMapReady || !mapInstanceRef.current) return
+    
     const fetchRoute = async () => {
       try {
+        const L = (await import("leaflet")).default
+        
         const response = await fetch(
-          `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${OPENROUTE_API_KEY}&start=${restaurantLocation[1]},${restaurantLocation[0]}&end=${userLocation[1]},${userLocation[0]}`,
+          `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${OPENROUTE_API_KEY}&start=${restaurantLocationRef.current[1]},${restaurantLocationRef.current[0]}&end=${userLocationRef.current[1]},${userLocationRef.current[0]}`,
         )
         const data = await response.json()
 
@@ -98,24 +128,22 @@ export default function OrderTrackerPage() {
           setDuration(Math.ceil(data.features[0].properties.segments[0].duration / 60))
 
           // Draw route on map
-          if (typeof window !== "undefined" && mapInstanceRef.current) {
-            L.polyline(coords, {
-              color: "#ce1126",
-              weight: 4,
-              opacity: 0.7,
-              dashArray: "10, 10",
-            }).addTo(mapInstanceRef.current)
+          L.polyline(coords, {
+            color: "#ce1126",
+            weight: 4,
+            opacity: 0.7,
+            dashArray: "10, 10",
+          }).addTo(mapInstanceRef.current)
 
-            mapInstanceRef.current.fitBounds(L.latLngBounds(coords))
-          }
+          mapInstanceRef.current.fitBounds(L.latLngBounds(coords))
         }
       } catch (error) {
-        console.error("[v0] Error fetching route:", error)
+        console.error("Error fetching route:", error)
       }
     }
 
     fetchRoute()
-  }, [restaurantLocation, userLocation])
+  }, [isMapReady])
 
   useEffect(() => {
     if (status === "delivering" && routeCoordinates.length > 0) {
@@ -136,7 +164,7 @@ export default function OrderTrackerPage() {
           routeCoordinates[currentIndex][1] +
           (routeCoordinates[nextIndex][1] - routeCoordinates[currentIndex][1]) * fraction
 
-        setDriverLocation([lat, lng])
+        driverLocationRef.current = [lat, lng]
 
         if (typeof window !== "undefined" && mapInstanceRef.current) {
           if (driverMarkerRef.current) {
@@ -145,19 +173,52 @@ export default function OrderTrackerPage() {
             const driverIcon = L.divIcon({
               className: "custom-marker",
               html: `<div class="relative">
-                      <div class="bg-[#ce1126] text-white p-2 rounded-full shadow-2xl border-2 border-white transform scale-110">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <circle cx="18.5" cy="17.5" r="3.5"/>
-                          <circle cx="5.5" cy="17.5" r="3.5"/>
-                          <path d="M15 6h2.5a2.5 2.5 0 1 1 0 5H7.817a2.5 2.5 0 0 1-2.317-1.745L5 8.75"/>
+                      <div class="relative w-12 h-12">
+                        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <!-- Shadow -->
+                          <ellipse cx="24" cy="42" rx="18" ry="3" fill="#000000" opacity="0.15"/>
+                          
+                          <!-- Scooter top view -->
+                          <g transform="translate(24, 20)">
+                            <!-- Rear wheel -->
+                            <circle cx="-10" cy="6" r="4" fill="#1F2937" stroke="#111827" stroke-width="1.2"/>
+                            <circle cx="-10" cy="6" r="2" fill="#374151"/>
+                            
+                            <!-- Front wheel -->
+                            <circle cx="10" cy="6" r="4" fill="#1F2937" stroke="#111827" stroke-width="1.2"/>
+                            <circle cx="10" cy="6" r="2" fill="#374151"/>
+                            
+                            <!-- Scooter body -->
+                            <path d="M -10 6 Q -10 0 0 -2 Q 10 0 10 6" fill="#ce1126" stroke="#991B1B" stroke-width="1.5"/>
+                            <rect x="-8" y="-2" width="16" height="8" rx="2" fill="#DC2626"/>
+                            
+                            <!-- Seat -->
+                            <ellipse cx="0" cy="0" rx="6" ry="4" fill="#1F2937"/>
+                            <ellipse cx="0" cy="0" rx="4" ry="2.5" fill="#374151"/>
+                            
+                            <!-- Handlebar -->
+                            <rect x="-2" y="-8" width="4" height="6" rx="1" fill="#4B5563"/>
+                            <rect x="-4" y="-9" width="8" height="2" rx="1" fill="#6B7280"/>
+                            
+                            <!-- Delivery box on back -->
+                            <g transform="translate(0, 10)">
+                              <rect x="-6" y="-4" width="12" height="8" rx="1.5" fill="#ce1126" stroke="#991B1B" stroke-width="1.2"/>
+                              <rect x="-5" y="-3" width="10" height="6" rx="1" fill="#DC2626"/>
+                              <path d="M -3 0 L 0 -2 L 3 0" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                              <circle cx="0" cy="1" r="1" fill="white"/>
+                            </g>
+                            
+                            <!-- Direction indicator (front light) -->
+                            <circle cx="0" cy="-10" r="1.5" fill="#FDE047" opacity="0.9"/>
+                          </g>
                         </svg>
                       </div>
-                      <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-gray-900 px-2 py-1 rounded text-xs font-bold shadow whitespace-nowrap">
-                        Ramesh • KA 01 EQ 2211
+                      <div class="absolute -top-9 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#ce1126] to-red-600 text-white px-3 py-1 rounded-full text-[11px] font-bold shadow-lg whitespace-nowrap border border-white/20">
+                        🏍️ Ramesh
                       </div>
                      </div>`,
-              iconSize: [40, 40],
-              iconAnchor: [20, 20],
+              iconSize: [48, 48],
+              iconAnchor: [24, 36],
             })
             driverMarkerRef.current = L.marker([lat, lng], { icon: driverIcon }).addTo(mapInstanceRef.current)
           }
@@ -168,18 +229,37 @@ export default function OrderTrackerPage() {
     }
   }, [status, routeCoordinates])
 
+  // Get user's real location first
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const newLocation: [number, number] = [position.coords.latitude, position.coords.longitude]
-          setUserLocation(newLocation)
-          console.log("[v0] User location acquired:", newLocation)
+          userLocationRef.current = newLocation
+          
+          // Place restaurant within 10km of user - random direction
+          const angle = Math.random() * 2 * Math.PI
+          const distanceKm = Math.random() * 8 + 2 // 2-10 km
+          const latOffset = (distanceKm / 111.32) * Math.cos(angle) // 111.32 km per degree latitude
+          const lngOffset = (distanceKm / (111.32 * Math.cos(newLocation[0] * Math.PI / 180))) * Math.sin(angle)
+          
+          restaurantLocationRef.current = [
+            newLocation[0] + latOffset,
+            newLocation[1] + lngOffset
+          ]
+          driverLocationRef.current = restaurantLocationRef.current
+          
+          console.log("User location acquired:", newLocation)
+          console.log("Restaurant placed at:", restaurantLocationRef.current, `(${distanceKm.toFixed(1)}km away)`)
+          setUserLocationAcquired(true)
         },
         (error) => {
-          console.log("[v0] Using default Bangalore location", error)
+          console.log("Using default Bangalore location", error)
+          setUserLocationAcquired(true)
         },
       )
+    } else {
+      setUserLocationAcquired(true)
     }
   }, [])
 
