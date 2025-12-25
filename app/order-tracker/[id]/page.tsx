@@ -6,6 +6,9 @@ import Link from "next/link"
 import "leaflet/dist/leaflet.css"
 import { useToast } from "@/hooks/use-toast"
 
+// Geographic constants for distance calculations
+const KM_PER_DEGREE_LAT = 111.32 // km per degree of latitude (constant)
+
 const OPENROUTE_API_KEY = process.env.NEXT_PUBLIC_OPENROUTE_API_KEY || 
   "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjYxZDBmNjM1ZTNhMzQ5ZjdhMzY0MzNkZjdiOTAxYjZlIiwiaCI6Im11cm11cjY0In0="
 
@@ -323,10 +326,9 @@ export default function OrderTrackerPage({ params }: { params: { id: string } })
           const distanceKm = Math.random() * 8 + 2 // 2-10 km
           
           // Correct distance calculation formula
-          // 111.32 km per degree latitude (constant)
-          // For longitude, it varies by latitude: 111.32 * cos(latitude)
-          const latOffset = (distanceKm / 111.32) * Math.cos(angle)
-          const lngOffset = (distanceKm / (111.32 * Math.cos(newLocation[0] * Math.PI / 180))) * Math.sin(angle)
+          // For longitude, it varies by latitude: KM_PER_DEGREE_LAT * cos(latitude)
+          const latOffset = (distanceKm / KM_PER_DEGREE_LAT) * Math.cos(angle)
+          const lngOffset = (distanceKm / (KM_PER_DEGREE_LAT * Math.cos(newLocation[0] * Math.PI / 180))) * Math.sin(angle)
           
           restaurantLocationRef.current = [
             newLocation[0] + latOffset,
@@ -337,7 +339,10 @@ export default function OrderTrackerPage({ params }: { params: { id: string } })
           setUserLocationAcquired(true)
         },
         (error) => {
-          console.error("Using default Bangalore location. Geolocation error:", error)
+          // Log generic error without exposing sensitive details
+          if (process.env.NODE_ENV === 'development') {
+            console.error("Geolocation error:", error)
+          }
           toast({
             variant: "destructive",
             title: "Location access unavailable",
